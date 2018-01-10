@@ -2,9 +2,9 @@
 Terraform Module for Automated EBS Volume Backups
 
 
-## Introduction 
+## Info 
 
-This module includes the necessary Terraform code to configure and manage the required resources to preform automated scheduled snapshotting of EBS volume. Automated cleanup of old snapshots created by the backup Lambda according to a defined retention policy is also handled by the module. 
+This module includes the necessary Terraform code to configure and manage the required resources to preform automated scheduled snapshotting of EBS volume. Automated cleanup of old snapshots created by the backup Lambda according to a defined retention policy is also handled by the module. Both Lambda fucntions included are triggered by scheduled CloudWatch event rules.
 
 A CloudWatch metric filter and an alarm to alert on backup failure are also created and managed. This publishes to a specified SNS topic, of which you will need to subscribe yourself to to receive alerts. Note: as this is outside the scope of this module you will need to create the SNS topic manually or through Terraform/use an existing one. 
 
@@ -80,11 +80,17 @@ module "ebs-snapshots" {
 
 
 ```
+As can be seen as above there are two parameters min_num_of_snapshots_to_retain,  min_retention_days. There are self-explanatory however it is worth noting that the minimum number of snapshots to retain will always take precedence, e.g. if retention days is 2 and minimum number to retain is 4 then snapshots will be effectively be retained for 4 days (assuming no previous older snapshots exist & the backup runs once a day). 
+
 N.B. it is not recommended to reduce the timeout value by less than 60 seconds if you require more than a couple of volumes to be backed up as there is a likelihood that the function will timeout without completing. 
 
 **Note:** You will need to manually create the S3 bucket and compress and upload *ebs_snapshot_lambda.py.zip* and *ebs_cleanup_lambda.py.zip*. This will be automated in a future version. This should be done before running a *terraform apply*
 
-You will need to create an SNS topic and subscribe yourself to it if you wish to receive alerts on the failure of any specific Lambdas. and include its arn as a key in cw_alarm_failure_actions and cleanup_cw_alarm_failure_actions.
+You will need to create an SNS topic and subscribe yourself to it if you wish to receive alerts on the failure of any specific functions. and include its arn as a key in *cw_alarm_failure_actions* and *cleanup_cw_alarm_failure_actions*.
 ## Future Improvements
+1. automated creation of S3 bucket
+2. automated uploading of Lambda functions to S3 bucket, 
+3. tidy up Lambda function code
 
 ### Terraform Compatibility
+Tested with 0.10.7
