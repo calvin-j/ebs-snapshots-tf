@@ -25,3 +25,15 @@ module "lambda_ebs_snapshots_cleanup" {
     min_number_to_retain    = "${var.min_snapshots_per_vol}"
   }
 }
+
+data "archive_file" "cleanup_lambda" {
+  type        = "zip"
+  source_file = "${path.module}/functions/ebs_cleanup_lambda.py"
+  output_path = "${path.module}/artefacts/cleanup_lambda.zip"
+}
+
+resource "aws_s3_bucket_object" "cleanup_lambda" {
+  bucket = "${var.cleanup_s3_bucket}"
+  key    = "${var.cleanup_s3_key}"
+  source = "${path.module}/artefacts/cleanup_lambda.zip"
+}

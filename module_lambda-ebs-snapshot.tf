@@ -23,3 +23,15 @@ module "lambda_ebs_snapshots" {
     volume_ids = "${join(",", var.volume_ids)}"
   }
 }
+
+data "archive_file" "snapshot_lambda" {
+  type        = "zip"
+  source_file = "${path.module}/functions/ebs_snapshot_lambda.py"
+  output_path = "${path.module}/artefacts/snapshot_lambda.zip"
+}
+
+resource "aws_s3_bucket_object" "snapshot_lambda" {
+  bucket = "${var.s3_bucket}"
+  key    = "${var.s3_key}"
+  source = "${path.module}/artefacts/snapshot_lambda.zip"
+}
