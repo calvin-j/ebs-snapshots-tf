@@ -5,6 +5,17 @@ import os
 from botocore.exceptions import ClientError
 from datetime import datetime,timedelta
 
+def sort_snapshots (result):
+    list_of_snaps = []
+
+    for snapshot in result['Snapshots']:
+        # Remove timezone info from snapshot in order for comparison to work below
+        snapshot_time = snapshot['StartTime'].replace(tzinfo=None)
+        # Build a list of all returned snapshots so we can sort that list by snapshot start time (so we evaluate the oldest snapshots first)
+        list_of_snaps.append({'date':snapshot_time, 'snap_id': snapshot['SnapshotId'], 'vol_id':snapshot['VolumeId']})
+        sorted_list = sorted(list_of_snaps, key=lambda k: k['date'])
+    return sorted_list
+
 def delete_snapshot(snapshot_id, reg):
     logger = logging.getLogger()
     # Set log level to INFO
@@ -48,18 +59,13 @@ def lambda_handler(event, context):
         # Filtering by snapshot timestamp comparison is not supported
         # So we grab all snapshot ids of snapshots that were created using the backup Lambda
         result = ec2.describe_snapshots(OwnerIds=[aws_account_id], Filters=[{'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
-        list_of_snaps = []
 
-        for snapshot in result['Snapshots']:
-            # Remove timezone info from snapshot in order for comparison to work below
-            snapshot_time = snapshot['StartTime'].replace(tzinfo=None)
-            # Build a list of all returned snapshots so we can sort that list by snapshot start time (so we evaluate the oldest snapshots first)
-            list_of_snaps.append({'date':snapshot_time, 'snap_id': snapshot['SnapshotId'], 'vol_id':snapshot['VolumeId']})
-
-        sorted_list_of_snaps = sorted(list_of_snaps, key=lambda k: k['date'])
+        # We sort the list of snapshots by asc date so we evaulate the oldest ones first for deletion
+        sorted_list_of_snaps = sort_snapshots(result)
 
         for snapshot in sorted_list_of_snaps:
             logger.info ("Checking snapshot %s which was created on %s" % (snapshot['snap_id'],snapshot['date']))
+
             # Subtract snapshot time from now returns a timedelta
             # Check if the timedelta is greater than retention days
             if (now - snapshot['date']) > timedelta(retention_days):
