@@ -7,7 +7,6 @@ from datetime import datetime,timedelta
 
 def sort_snapshots (result):
     list_of_snaps = []
-
     for snapshot in result['Snapshots']:
         # Remove timezone info from snapshot in order for comparison to work below
         snapshot_time = snapshot['StartTime'].replace(tzinfo=None)
@@ -28,7 +27,6 @@ def delete_snapshot(snapshot_id, reg):
     except ClientError as e:
         logger.error("Caught exception: %s" % e)
         logger.error("Snapshot Cleanup Lambda failed.")
-
     return
 
 def lambda_handler(event, context):
