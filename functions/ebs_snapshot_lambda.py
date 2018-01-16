@@ -12,12 +12,12 @@ def validate_volumes(env_volume_ids, result):
     returned_vol_count = 0
     env_volume_count = len(env_volume_ids)
     for volume in result['Volumes']:
-        returned_vol_count+=1
+        returned_vol_count += 1
 
     if env_volume_count != returned_vol_count:
-        logger.warning ("One or more of your volume IDs are invalid or do not exist in the specified region")
+        logger.warning("One or more of your volume IDs are invalid or do not exist in the specified region")
     else:
-        logger.info ("All Volume IDs are valid")
+        logger.info("All Volume IDs are valid")
     return
 
 def lambda_handler(event, context):
@@ -36,7 +36,7 @@ def lambda_handler(event, context):
         volume_ids = input_volume_ids.split(',')
 
         # Get all in-use volumes
-        result = ec2.describe_volumes( Filters=[{'Name': 'volume-id', 'Values':volume_ids}])
+        result = ec2.describe_volumes(Filters = [{'Name': 'volume-id', 'Values':volume_ids}])
 
         # Check that all volume IDs are valid
         validate_volumes(volume_ids, result)
@@ -44,10 +44,10 @@ def lambda_handler(event, context):
         for volume in result['Volumes']:
             logger.info ("Backing up %s in %s" % (volume['VolumeId'], volume['AvailabilityZone']))
             # Create snapshot
-            result = ec2.create_snapshot(VolumeId=volume['VolumeId'],Description='Created by Lambda backup function ebs-snapshots')
+            result = ec2.create_snapshot(VolumeId = volume['VolumeId'],Description = 'Created by Lambda backup function ebs-snapshots')
 
             # Get snapshot resource
-            ec2resource = boto3.resource('ec2', region_name=aws_region)
+            ec2resource = boto3.resource('ec2', region_name = aws_region)
             snapshot = ec2resource.Snapshot(result['SnapshotId'])
 
             volumename      = 'N/A'
@@ -93,7 +93,7 @@ def lambda_handler(event, context):
                 ]
 
             # Add tags to snapshot
-            snapshot.create_tags(Tags=snapshottags)
+            snapshot.create_tags(Tags = snapshottags)
     except Exception as e:
         logger.error('Snapshot backup Lambda failed.')
         print(type(e))

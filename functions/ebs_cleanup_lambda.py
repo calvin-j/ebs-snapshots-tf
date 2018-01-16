@@ -53,17 +53,17 @@ def lambda_handler(event, context):
         ec2 = boto3.client('ec2')
 
         # Connect to region
-        ec2 = boto3.client('ec2',region_name=aws_region)
+        ec2 = boto3.client('ec2',region_name = aws_region)
 
         # Filtering by snapshot timestamp comparison is not supported
         # So we grab all snapshot ids of snapshots that were created using the backup Lambda
-        result = ec2.describe_snapshots(OwnerIds=[aws_account_id], Filters=[{'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
+        result = ec2.describe_snapshots(OwnerIds = [aws_account_id], Filters = [{'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
 
         # We sort the list of snapshots by asc date so we evaulate the oldest ones first for deletion
         sorted_list_of_snaps = sort_snapshots(result)
 
         for snapshot in sorted_list_of_snaps:
-            logger.info ("Checking snapshot %s which was created on %s" % (snapshot['snap_id'],snapshot['date']))
+            logger.info("Checking snapshot %s which was created on %s" % (snapshot['snap_id'],snapshot['date']))
 
             # Subtract snapshot time from now returns a timedelta
             # Check if the timedelta is greater than retention days
@@ -72,21 +72,21 @@ def lambda_handler(event, context):
                 # Additional check to pull out volume ID then make sure there are at least N retention days of snapshots before deleting
                 snapshot_vol_id = snapshot['vol_id']
                 split_snapshot_vol_id = snapshot_vol_id.split(',')
-                logger.info ("Volume associated with this snapshot is %s" % split_snapshot_vol_id)
+                logger.info("Volume associated with this snapshot is %s" % split_snapshot_vol_id)
                 # Retrive all snapshots for the same volume
-                volume_result = ec2.describe_snapshots(Filters=[{'Name': 'volume-id', 'Values':split_snapshot_vol_id}, {'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
-                retained_snapshots =0
+                volume_result = ec2.describe_snapshots(Filters = [{'Name': 'volume-id', 'Values':split_snapshot_vol_id}, {'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
+                retained_snapshots = 0
                 # Count the number of snapshots associated with this volume
                 for volume in volume_result['Snapshots']:
-                        retained_snapshots +=1
+                        retained_snapshots += 1
 
                 if retained_snapshots > min_num_snapshots_to_keep:
                     delete_snapshot(snapshot['snap_id'], aws_region)
                 else:
-                    logger.info ("There are only %s retained snapshots for this volume so we keep this snapshot" % retained_snapshots)
+                    logger.info("There are only %s retained snapshots for this volume so we keep this snapshot" % retained_snapshots)
 
             else:
-                logger.info ("Snapshot %s is newer than configured retention of %d days so we keep it" % (snapshot['snap_id'],retention_days))
+                logger.info("Snapshot %s is newer than configured retention of %d days so we keep it" % (snapshot['snap_id'],retention_days))
 
     except Exception as e:
         logger.error("Snapshot Cleanup Lambda failed.")
