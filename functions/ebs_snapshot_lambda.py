@@ -5,7 +5,7 @@ import datetime
 import os
 import logging
 
-def validate_volumes(env_volume_ids, result,):
+def validate_volumes(env_volume_ids, result):
     logger = logging.getLogger()
     logger.setLevel(20)
 
