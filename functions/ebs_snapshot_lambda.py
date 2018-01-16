@@ -1,5 +1,5 @@
- # Code based on and adapted from https://www.codebyamir.com/blog/automated-ebs-snapshots-using-aws-lambda-cloudwatch
- # Backup all specified volumes in a specified region
+ # Code adapted from https://www.codebyamir.com/blog/automated-ebs-snapshots-using-aws-lambda-cloudwatch
+ # Backup and tag all specified volumes in a given region
 import boto3
 import datetime
 import os
@@ -15,7 +15,7 @@ def validate_volumes(env_volume_ids, result):
         returned_vol_count+=1
 
     if env_volume_count != returned_vol_count:
-        logger.warning ("One or more of your volume IDs are invalid")
+        logger.warning ("One or more of your volume IDs are invalid or do not exist in the specified region")
     else:
         logger.info ("All Volume IDs are valid")
     return
