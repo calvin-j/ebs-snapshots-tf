@@ -4,6 +4,22 @@ import boto3
 import datetime
 import os
 import logging
+
+def validate_volumes(env_volume_ids, result):
+    logger = logging.getLogger()
+    logger.setLevel(20)
+
+    returned_vol_count = 0
+    env_volume_count = len(env_volume_ids)
+    for volume in result['Volumes']:
+        returned_vol_count+=1
+
+    if env_volume_count != returned_vol_count:
+        logger.warning ("One or more of your volume IDs are invalid")
+    else:
+        logger.info ("All Volume IDs are valid")
+    return
+
 def lambda_handler(event, context):
     logger = logging.getLogger()
     #set log level to INFO
@@ -15,12 +31,15 @@ def lambda_handler(event, context):
         # Connect to region
         ec2 = boto3.client('ec2', region_name=aws_region)
 
-        #Get volume IDs
+        # Get volume IDs
         input_volume_ids = os.environ['volume_ids']
         volume_ids = input_volume_ids.split(',')
 
-        # Get all in-use volumes in all regions
+        # Get all in-use volumes
         result = ec2.describe_volumes( Filters=[{'Name': 'volume-id', 'Values':volume_ids}])
+
+        # Check that all volume IDs are valid
+        validate_volumes(volume_ids, result)
 
         for volume in result['Volumes']:
             logger.info ("Backing up %s in %s" % (volume['VolumeId'], volume['AvailabilityZone']))

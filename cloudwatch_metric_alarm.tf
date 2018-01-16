@@ -16,6 +16,7 @@ resource "aws_cloudwatch_metric_alarm" "ebs_snapshot_failure" {
   evaluation_periods  = 1
   threshold           = 1
   alarm_actions       = ["${var.cw_alarm_failure_actions}"]
+  treat_missing_data  = "notBreaching"
 }
 
 resource "aws_cloudwatch_metric_alarm" "ebs_snapshot_cleanup_failure" {
@@ -36,4 +37,5 @@ resource "aws_cloudwatch_metric_alarm" "ebs_snapshot_cleanup_failure" {
   evaluation_periods  = 1
   threshold           = 1
   alarm_actions       = ["${var.cleanup_cw_alarm_failure_actions}"]
+  treat_missing_data  = "notBreaching"
 }
