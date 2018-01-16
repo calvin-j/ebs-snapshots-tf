@@ -5,7 +5,7 @@ import os
 from botocore.exceptions import ClientError
 from datetime import datetime,timedelta
 
-def sort_snapshots (result):
+def sort_snapshots(result):
     list_of_snaps = []
     for snapshot in result['Snapshots']:
         # Remove timezone info from snapshot in order for comparison to work below
