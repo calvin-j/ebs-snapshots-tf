@@ -26,7 +26,7 @@ def lambda_handler(event, context):
     logger.setLevel(20)
     try:
         ec2 = boto3.client('ec2')
-        aws_region =os.environ['aws_region']
+        aws_region = os.environ['aws_region']
 
         # Connect to region
         ec2 = boto3.client('ec2', region_name=aws_region)
