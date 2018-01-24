@@ -34,7 +34,8 @@ module "ebs-snapshots" {
   timeout     = 60
 
   snapshot_s3_bucket = "snapshotslambda"
-  snapshot_s3_key    = "test/ebs_snapshot_lambda.py.zip"
+  snapshot_s3_key    = "lambda/ebs_snapshot_lambda.py.zip"
+
   cwlg_retention     = 30
   aws_region         = "${var.aws_region}"
 
@@ -64,7 +65,8 @@ module "ebs-snapshots" {
   cleanup_timeout     = 120
 
   cleanup_s3_bucket      = "snapshotslambda"
-  cleanup_s3_key         = "test/ebs_cleanup_lambda.py.zip"
+  cleanup_s3_key         = "lambda/ebs_cleanup_lambda.py.zip"
+
   cleanup_cwlg_retention = 30
 
   cleanup_cw_rule_schedule_expression = "cron(00 03 ? * 3-7 *)"
