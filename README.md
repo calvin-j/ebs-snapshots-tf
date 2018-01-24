@@ -20,7 +20,7 @@ Snapshots are tagged and named according to the tags and name on the source volu
 
 ```
 module "ebs-snapshots" {
-  source = "../ebs-snapshots-tf"
+  source = "github.com/calvin-j/ebs-snapshots-tf.git"
 
   snapshot_name  = "ebs-snapshots"
   project        = "${var.project}"
