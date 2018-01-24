@@ -19,9 +19,14 @@ variable "default_tags" {
   default     = {}
 }
 
-variable "name" {
+variable "snapshot_name" {
   type        = "string"
-  description = "Name of the Lambda"
+  description = "Name of the Snapshot Lambda"
+}
+
+variable "cleanup_name" {
+  type        = "string"
+  description = "Name of the Cleanup Lambda"
 }
 
 #ebs snapshot lambda
@@ -56,12 +61,12 @@ variable "aws_region" {
   description = ""
 }
 
-variable "s3_bucket" {
+variable "snapshot_s3_bucket" {
   type        = "string"
   description = "S3 bucket that the backup Lambda code is stored in"
 }
 
-variable "s3_key" {
+variable "snapshot_s3_key" {
   type        = "string"
   description = "S3 key that the backup Lambda code is stored in"
 }

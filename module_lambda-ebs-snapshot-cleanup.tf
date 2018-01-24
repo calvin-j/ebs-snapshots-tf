@@ -1,6 +1,6 @@
 module "lambda_ebs_snapshots_cleanup" {
   source      = "lambda"
-  name        = "ebs-snapshots-cleanup"
+  name        = "${var.cleanup_name}"
   project     = "${var.project}"
   environment = "${var.environment}"
   component   = "${var.component}"
