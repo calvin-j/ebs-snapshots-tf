@@ -1,5 +1,5 @@
 # Code adapted from https://www.codebyamir.com/blog/automated-ebs-snapshots-using-aws-lambda-cloudwatch
-# Delete all snapshots older than the specified retention day providing there are N retained snapshots for the source volume
+# Delete all snapshots older than the specified retention period providing there are N retained snapshots for the source volume
 import boto3
 import logging
 import os

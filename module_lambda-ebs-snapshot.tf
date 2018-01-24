@@ -1,12 +1,12 @@
 module "lambda_ebs_snapshots" {
   source      = "lambda"
-  name        = "${var.name}"
+  name        = "${var.snapshot_name}"
   project     = "${var.project}"
   environment = "${var.environment}"
   component   = "${var.component}"
 
-  s3_bucket              = "${var.s3_bucket}"
-  s3_key                 = "${var.s3_key}"
+  s3_bucket              = "${var.snapshot_s3_bucket}"
+  s3_key                 = "${var.snapshot_s3_key}"
   publish                = "${var.publish}"
   memory_size            = "${var.memory_size}"
   timeout                = "${var.timeout}"
@@ -31,7 +31,7 @@ data "archive_file" "snapshot_lambda" {
 }
 
 resource "aws_s3_bucket_object" "snapshot_lambda" {
-  bucket = "${var.s3_bucket}"
-  key    = "${var.s3_key}"
+  bucket = "${var.snapshot_s3_bucket}"
+  key    = "${var.snapshot_s3_key}"
   source = "${path.module}/artefacts/snapshot_lambda.zip"
 }
