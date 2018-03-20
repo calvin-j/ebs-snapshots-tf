@@ -10,3 +10,6 @@
 
 # Artefacts directory
 artefacts/
+
+# VS Code
+.vscode
