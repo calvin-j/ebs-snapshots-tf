@@ -50,5 +50,10 @@ jobs:
       - name: Install dev dependencies
         run: pip install -r requirements-dev.txt
 
+      - name: Show installed versions
+        run: |
+          python --version
+          pip freeze
+
       - name: pytest
-        run: pytest -v
+        run: pytest -v -ra --tb=long --reruns 2 --reruns-delay 2
