@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 
 import boto3
 import pytest
-from botocore.exceptions import ClientError
 
 import ebs_cleanup_lambda
 
@@ -60,24 +59,11 @@ def test_delete_snapshot_invokes_delete():
     assert all(s["SnapshotId"] != snap_ids[0] for s in remaining)
 
 
-def test_delete_snapshot_swallows_client_error(monkeypatch, caplog):
-    class _BoomSnapshot:
-        def delete(self):
-            raise ClientError(
-                {"Error": {"Code": "InvalidSnapshot.NotFound", "Message": "boom"}},
-                "DeleteSnapshot",
-            )
-
-    class _BoomResource:
-        def Snapshot(self, _id):
-            return _BoomSnapshot()
-
-    monkeypatch.setattr(
-        ebs_cleanup_lambda.boto3, "resource", lambda *a, **k: _BoomResource()
-    )
-
+def test_delete_snapshot_swallows_client_error(caplog):
+    # moto raises InvalidSnapshot.NotFound for unknown snapshot IDs,
+    # which is exactly the ClientError the handler should swallow.
     with caplog.at_level(logging.ERROR):
-        ebs_cleanup_lambda.delete_snapshot("snap-doesnotexist", REGION)
+        ebs_cleanup_lambda.delete_snapshot("snap-00000000000000000", REGION)
     assert "Snapshot Cleanup Lambda failed" in caplog.text
 
 

@@ -58,7 +58,7 @@ jobs:
       - name: pytest
         run: |
           set +e
-          pytest -v -ra --tb=long --reruns 2 --reruns-delay 2 2>&1 | tee /tmp/pytest.log
+          pytest -v -ra --tb=long 2>&1 | tee /tmp/pytest.log
           ec=${PIPESTATUS[0]}
           {
             echo '### pytest output'
