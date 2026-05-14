@@ -1,95 +1,95 @@
 # Code adapted from https://www.codebyamir.com/blog/automated-ebs-snapshots-using-aws-lambda-cloudwatch
-# Delete all snapshots older than the specified retention period providing there are N retained snapshots for the source volume
-import boto3
+# Delete all snapshots older than the specified retention period providing
+# there are at least N retained snapshots for the source volume.
 import logging
 import os
+from datetime import datetime, timedelta, timezone
+
+import boto3
 from botocore.exceptions import ClientError
-from datetime import datetime,timedelta
 
-def sort_snapshots(result):
-    list_of_snaps = []
-    sorted_list = []
-    for snapshot in result['Snapshots']:
-        # Remove timezone info from snapshot in order for comparison to work below
-        snapshot_time = snapshot['StartTime'].replace(tzinfo=None)
-        # Build a list of all returned snapshots so we can sort that list by snapshot start time (so we evaluate the oldest snapshots first)
-        list_of_snaps.append({'date':snapshot_time, 'snap_id': snapshot['SnapshotId'], 'vol_id':snapshot['VolumeId']})
-        sorted_list = sorted(list_of_snaps, key=lambda k: k['date'])
-    return sorted_list
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-def delete_snapshot(snapshot_id, reg):
-    logger = logging.getLogger()
-    # Set log level to INFO
-    logger.setLevel(20)
-    logger.info("Deleting snapshot %s " % (snapshot_id))
+
+def sort_snapshots(snapshots):
+    # Sort ascending by StartTime so the oldest snapshots are evaluated first.
+    return sorted(
+        (
+            {
+                "date": snap["StartTime"],
+                "snap_id": snap["SnapshotId"],
+                "vol_id": snap["VolumeId"],
+            }
+            for snap in snapshots
+        ),
+        key=lambda k: k["date"],
+    )
+
+
+def delete_snapshot(ec2_resource, snapshot_id):
+    logger.info(f"Deleting snapshot {snapshot_id}")
     try:
-        ec2resource = boto3.resource('ec2', region_name=reg)
-        snapshot = ec2resource.Snapshot(snapshot_id)
-        snapshot.delete()
+        ec2_resource.Snapshot(snapshot_id).delete()
+        return True
     except ClientError as e:
-        logger.error("Caught exception: %s" % e)
+        logger.error(f"Caught exception deleting {snapshot_id}: {e}")
         logger.error("Snapshot Cleanup Lambda failed.")
-    return
+        return False
+
 
 def lambda_handler(event, context):
-    logger = logging.getLogger()
-    # Set log level to INFO
-    logger.setLevel(20)
-
     try:
-        # Get Environment Variables
-        aws_account_id = os.environ['aws_account_id']
-        # Define retention period in days
-        retention_days = int(os.environ['snapshot_retention_days'])
-        N_days_ago_retention_days = int(retention_days)
-        aws_region = os.environ['aws_region']
-        min_num_snapshots_to_keep = int(os.environ['min_number_to_retain'])
+        aws_account_id = os.environ["aws_account_id"]
+        retention_days = int(os.environ["snapshot_retention_days"])
+        aws_region = os.environ["aws_region"]
+        min_num_snapshots_to_keep = int(os.environ["min_number_to_retain"])
 
-        now = datetime.now()
-        # Work out the date N days ago - log as useful
-        date_N_days_ago =   now - timedelta(days=N_days_ago_retention_days)
-        logger.info("Time N days ago %s" % date_N_days_ago)
+        now = datetime.now(timezone.utc)
+        retention = timedelta(days=retention_days)
+        logger.info(f"Cutoff for deletion is {now - retention} (retention {retention_days} days)")
 
-        # Create EC2 client
-        ec2 = boto3.client('ec2')
+        ec2 = boto3.client("ec2", region_name=aws_region)
+        ec2_resource = boto3.resource("ec2", region_name=aws_region)
 
-        # Connect to region
-        ec2 = boto3.client('ec2',region_name = aws_region)
+        # Snapshot timestamp comparison isn't supported as a filter, so we
+        # grab every snapshot created by the backup Lambda and evaluate them.
+        result = ec2.describe_snapshots(
+            OwnerIds=[aws_account_id],
+            Filters=[{"Name": "tag:Created_by", "Values": ["LambdaEbsSnapshot"]}],
+        )
 
-        # Filtering by snapshot timestamp comparison is not supported
-        # So we grab all snapshot ids of snapshots that were created using the backup Lambda
-        result = ec2.describe_snapshots(OwnerIds = [aws_account_id], Filters = [{'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
+        # Per-volume counts built once from the initial result and decremented
+        # as we delete. This avoids an extra describe_snapshots call per
+        # snapshot, which can trip EC2 API throttling at scale.
+        snapshots_per_volume = {}
+        for snap in result["Snapshots"]:
+            vol_id = snap["VolumeId"]
+            snapshots_per_volume[vol_id] = snapshots_per_volume.get(vol_id, 0) + 1
 
-        # We sort the list of snapshots by asc date so we evaulate the oldest ones first for deletion
-        sorted_list_of_snaps = sort_snapshots(result)
+        for snapshot in sort_snapshots(result["Snapshots"]):
+            snap_id = snapshot["snap_id"]
+            vol_id = snapshot["vol_id"]
+            logger.info(f"Checking snapshot {snap_id} which was created on {snapshot['date']}")
 
-        for snapshot in sorted_list_of_snaps:
-            logger.info("Checking snapshot %s which was created on %s" % (snapshot['snap_id'],snapshot['date']))
+            if (now - snapshot["date"]) <= retention:
+                logger.info(
+                    f"Snapshot {snap_id} is newer than configured retention of {retention_days} days so we keep it"
+                )
+                continue
 
-            # Subtract snapshot time from now returns a timedelta
-            # Check if the timedelta is greater than retention days
-            if (now - snapshot['date']) > timedelta(retention_days):
-                logger.info("Snapshot is older than configured retention of %d days" % retention_days)
-                # Additional check to pull out volume ID then make sure there are at least N retention days of snapshots before deleting
-                snapshot_vol_id = snapshot['vol_id']
-                split_snapshot_vol_id = snapshot_vol_id.split(',')
-                logger.info("Volume associated with this snapshot is %s" % split_snapshot_vol_id)
-                # Retrive all snapshots for the same volume
-                volume_result = ec2.describe_snapshots(Filters = [{'Name': 'volume-id', 'Values':split_snapshot_vol_id}, {'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
-                retained_snapshots = 0
-                # Count the number of snapshots associated with this volume
-                for volume in volume_result['Snapshots']:
-                        retained_snapshots += 1
+            logger.info(f"Snapshot is older than configured retention of {retention_days} days")
+            logger.info(f"Volume associated with this snapshot is {vol_id}")
 
-                if retained_snapshots > min_num_snapshots_to_keep:
-                    delete_snapshot(snapshot['snap_id'], aws_region)
-                else:
-                    logger.info("There are only %s retained snapshots for this volume so we keep this snapshot" % retained_snapshots)
-
+            retained_snapshots = snapshots_per_volume.get(vol_id, 0)
+            if retained_snapshots > min_num_snapshots_to_keep:
+                if delete_snapshot(ec2_resource, snap_id):
+                    snapshots_per_volume[vol_id] = retained_snapshots - 1
             else:
-                logger.info("Snapshot %s is newer than configured retention of %d days so we keep it" % (snapshot['snap_id'],retention_days))
+                logger.info(
+                    f"There are only {retained_snapshots} retained snapshots for this volume so we keep this snapshot"
+                )
 
-    except Exception as e:
-        logger.error("Snapshot Cleanup Lambda failed.")
-        print(type(e))
-        raise e
+    except Exception:
+        logger.exception("Snapshot Cleanup Lambda failed.")
+        raise
