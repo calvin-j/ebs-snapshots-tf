@@ -24,6 +24,8 @@ module "lambda_ebs_snapshots_cleanup" {
     aws_account_id          = data.aws_caller_identity.current.account_id
     min_number_to_retain    = tostring(var.min_snapshots_per_vol)
   }
+
+  source_code_hash = data.archive_file.cleanup_lambda.output_base64sha256
 }
 
 data "archive_file" "cleanup_lambda" {
@@ -36,4 +38,5 @@ resource "aws_s3_object" "cleanup_lambda" {
   bucket = var.cleanup_s3_bucket
   key    = var.cleanup_s3_key
   source = "${path.module}/artefacts/cleanup_lambda.zip"
+  etag   = data.archive_file.cleanup_lambda.output_md5
 }
