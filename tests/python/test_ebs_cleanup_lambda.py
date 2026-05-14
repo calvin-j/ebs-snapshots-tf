@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError
 
 import ebs_cleanup_lambda
 
@@ -59,32 +60,36 @@ def test_delete_snapshot_invokes_delete():
     assert all(s["SnapshotId"] != snap_ids[0] for s in remaining)
 
 
-def test_delete_snapshot_swallows_client_error(caplog):
-    # moto raises InvalidSnapshot.NotFound for unknown snapshot IDs,
-    # which is exactly the ClientError the handler should swallow.
+def test_delete_snapshot_reraises_client_error(caplog):
+    # The handler logs the failure and re-raises so the outer
+    # lambda_handler exits non-zero (real-world: CloudWatch alarm fires).
     with caplog.at_level(logging.ERROR):
-        ebs_cleanup_lambda.delete_snapshot("snap-00000000000000000", REGION)
-    assert "Snapshot Cleanup Lambda failed" in caplog.text
+        with pytest.raises(ClientError):
+            ebs_cleanup_lambda.delete_snapshot("snap-00000000000000000", REGION)
+    assert "Caught exception" in caplog.text
 
 
-def test_handler_deletes_old_when_above_min_retain(cleanup_env, monkeypatch):
+def test_handler_deletes_down_to_below_min_retain(cleanup_env, monkeypatch):
+    # min_number_to_retain=2, 4 old snapshots: handler deletes while
+    # count >= 2, stopping when count drops below 2. End state: 1 snapshot.
     ec2 = boto3.client("ec2", region_name=REGION)
     _, snap_ids = _make_volume_and_snapshots(ec2, count=4)
 
-    _shift_now_by(monkeypatch, days=30)  # all snapshots are now "30 days old"
+    _shift_now_by(monkeypatch, days=30)
     ebs_cleanup_lambda.lambda_handler({}, None)
 
     remaining = ec2.describe_snapshots(
         OwnerIds=[ACCOUNT_ID],
         Filters=[{"Name": "tag:Created_by", "Values": ["LambdaEbsSnapshot"]}],
     )["Snapshots"]
-    # min_number_to_retain=2 → exactly 2 must remain
-    assert len(remaining) == 2
+    assert len(remaining) == 1
     remaining_ids = {s["SnapshotId"] for s in remaining}
     assert remaining_ids.issubset(set(snap_ids))
 
 
-def test_handler_keeps_when_at_min_retain(cleanup_env, monkeypatch):
+def test_handler_stops_deleting_once_below_min_retain(cleanup_env, monkeypatch):
+    # 2 old snapshots, min=2: delete 1 (count=2 >= 2), skip the next
+    # (count=1 < 2). Exactly one snapshot remains.
     ec2 = boto3.client("ec2", region_name=REGION)
     _, snap_ids = _make_volume_and_snapshots(ec2, count=2)
 
@@ -95,7 +100,8 @@ def test_handler_keeps_when_at_min_retain(cleanup_env, monkeypatch):
         OwnerIds=[ACCOUNT_ID],
         Filters=[{"Name": "tag:Created_by", "Values": ["LambdaEbsSnapshot"]}],
     )["Snapshots"]
-    assert {s["SnapshotId"] for s in remaining} == set(snap_ids)
+    assert len(remaining) == 1
+    assert {s["SnapshotId"] for s in remaining}.issubset(set(snap_ids))
 
 
 def test_handler_keeps_recent_snapshots(cleanup_env):
