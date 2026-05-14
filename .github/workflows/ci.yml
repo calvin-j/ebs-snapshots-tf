@@ -28,8 +28,11 @@ jobs:
       - uses: terraform-linters/setup-tflint@v4
         with:
           tflint_version: v0.55.1
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tflint --init
           tflint --recursive --minimum-failure-severity=error
