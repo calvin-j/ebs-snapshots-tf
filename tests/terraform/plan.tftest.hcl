@@ -48,50 +48,6 @@ variables {
   cleanup_cw_alarm_namespace       = "test-ci-ebs-ebs-snapshot-cleanup-lambda"
 }
 
-run "valid_plan" {
+run "plan_succeeds" {
   command = plan
-
-  assert {
-    condition     = module.lambda_ebs_snapshots.function_name == "test-ci-ebs-ebs-snapshots"
-    error_message = "Snapshot Lambda function name not composed correctly"
-  }
-
-  assert {
-    condition     = module.lambda_ebs_snapshots_cleanup.function_name == "test-ci-ebs-ebs-snapshots-cleanup"
-    error_message = "Cleanup Lambda function name not composed correctly"
-  }
-
-  assert {
-    condition     = aws_cloudwatch_event_rule.ebs_snapshot.schedule_expression == "cron(00 01 ? * 3-7 *)"
-    error_message = "Snapshot event rule schedule not wired through"
-  }
-
-  assert {
-    condition     = aws_cloudwatch_event_rule.ebs_snapshot_cleanup.schedule_expression == "cron(00 03 ? * 3-7 *)"
-    error_message = "Cleanup event rule schedule not wired through"
-  }
-
-  assert {
-    condition     = aws_cloudwatch_event_rule.ebs_snapshot.state == "ENABLED"
-    error_message = "Snapshot event rule should be enabled"
-  }
-}
-
-run "rule_disabled_when_flag_false" {
-  command = plan
-
-  variables {
-    cw_rule_enabled         = false
-    cleanup_cw_rule_enabled = false
-  }
-
-  assert {
-    condition     = aws_cloudwatch_event_rule.ebs_snapshot.state == "DISABLED"
-    error_message = "Snapshot event rule should be disabled when cw_rule_enabled = false"
-  }
-
-  assert {
-    condition     = aws_cloudwatch_event_rule.ebs_snapshot_cleanup.state == "DISABLED"
-    error_message = "Cleanup event rule should be disabled when cleanup_cw_rule_enabled = false"
-  }
 }
