@@ -71,10 +71,7 @@ jobs:
             grep -E "^FAILED |^ERROR " /tmp/pytest.log | while IFS= read -r line; do
               echo "::error::$line"
             done
-            tail -60 /tmp/pytest.log | python3 -c '
-import sys
-buf = sys.stdin.read().replace("%","%25").replace("\r","%0D").replace("\n","%0A")
-print(f"::error title=pytest tail::{buf}")
-'
+            encoded=$(tail -80 /tmp/pytest.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+            echo "::error title=pytest tail::${encoded}"
           fi
           exit "$ec"
