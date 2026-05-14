@@ -28,7 +28,7 @@ def delete_snapshot(snapshot_id, reg):
         snapshot.delete()
     except ClientError as e:
         logger.error("Caught exception: %s" % e)
-        logger.error("Snapshot Cleanup Lambda failed.")
+        raise
     return
 
 def lambda_handler(event, context):
@@ -58,7 +58,18 @@ def lambda_handler(event, context):
 
         # Filtering by snapshot timestamp comparison is not supported
         # So we grab all snapshot ids of snapshots that were created using the backup Lambda
-        result = ec2.describe_snapshots(OwnerIds = [aws_account_id], Filters = [{'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
+        # Use a paginator so we don't silently cap at the API's default page size
+        paginator = ec2.get_paginator('describe_snapshots')
+        result = {'Snapshots': []}
+        for page in paginator.paginate(OwnerIds = [aws_account_id], Filters = [{'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}]):
+            result['Snapshots'].extend(page['Snapshots'])
+
+        # Build a count of snapshots per volume from the full result, so we don't need a
+        # per-snapshot describe_snapshots call inside the deletion loop
+        snapshot_counts_by_volume = {}
+        for snap in result['Snapshots']:
+            vol_id = snap['VolumeId']
+            snapshot_counts_by_volume[vol_id] = snapshot_counts_by_volume.get(vol_id, 0) + 1
 
         # We sort the list of snapshots by asc date so we evaulate the oldest ones first for deletion
         sorted_list_of_snaps = sort_snapshots(result)
@@ -74,15 +85,12 @@ def lambda_handler(event, context):
                 snapshot_vol_id = snapshot['vol_id']
                 split_snapshot_vol_id = snapshot_vol_id.split(',')
                 logger.info("Volume associated with this snapshot is %s" % split_snapshot_vol_id)
-                # Retrive all snapshots for the same volume
-                volume_result = ec2.describe_snapshots(Filters = [{'Name': 'volume-id', 'Values':split_snapshot_vol_id}, {'Name': 'tag:Created_by', 'Values': ["LambdaEbsSnapshot"]}])
-                retained_snapshots = 0
-                # Count the number of snapshots associated with this volume
-                for volume in volume_result['Snapshots']:
-                        retained_snapshots += 1
+                # Look up the current count of snapshots for this volume from the pre-computed dict
+                retained_snapshots = snapshot_counts_by_volume.get(snapshot_vol_id, 0)
 
-                if retained_snapshots > min_num_snapshots_to_keep:
+                if retained_snapshots >= min_num_snapshots_to_keep:
                     delete_snapshot(snapshot['snap_id'], aws_region)
+                    snapshot_counts_by_volume[snapshot_vol_id] = retained_snapshots - 1
                 else:
                     logger.info("There are only %s retained snapshots for this volume so we keep this snapshot" % retained_snapshots)
 
