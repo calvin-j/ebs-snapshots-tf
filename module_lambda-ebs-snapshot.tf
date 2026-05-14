@@ -22,6 +22,8 @@ module "lambda_ebs_snapshots" {
     aws_region = var.aws_region
     volume_ids = join(",", var.volume_ids)
   }
+
+  source_code_hash = data.archive_file.snapshot_lambda.output_base64sha256
 }
 
 data "archive_file" "snapshot_lambda" {
@@ -34,4 +36,5 @@ resource "aws_s3_object" "snapshot_lambda" {
   bucket = var.snapshot_s3_bucket
   key    = var.snapshot_s3_key
   source = "${path.module}/artefacts/snapshot_lambda.zip"
+  etag   = data.archive_file.snapshot_lambda.output_md5
 }

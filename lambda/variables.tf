@@ -87,3 +87,9 @@ variable "default_tags" {
   description = "Default tags to apply to resources."
   default     = {}
 }
+
+variable "source_code_hash" {
+  type        = string
+  description = "Base64-encoded SHA256 hash of the Lambda deployment package. Used to trigger function updates when code changes."
+  default     = null
+}

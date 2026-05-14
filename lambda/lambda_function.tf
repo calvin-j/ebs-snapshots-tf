@@ -9,8 +9,9 @@ resource "aws_lambda_function" "main" {
 
   description = "${upper(var.name)} lambda function"
 
-  s3_bucket = var.s3_bucket
-  s3_key    = var.s3_key
+  s3_bucket        = var.s3_bucket
+  s3_key           = var.s3_key
+  source_code_hash = var.source_code_hash
 
   runtime     = var.runtime
   handler     = var.handler
