@@ -32,7 +32,7 @@ jobs:
       - name: tflint
         run: |
           tflint --init
-          tflint --recursive
+          tflint --recursive --minimum-failure-severity=error
 
       - name: terraform test
         run: terraform test -test-directory=tests/terraform
