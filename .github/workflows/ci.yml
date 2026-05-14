@@ -67,4 +67,14 @@ jobs:
             cat /tmp/pytest.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ec" -ne 0 ]; then
+            grep -E "^FAILED |^ERROR " /tmp/pytest.log | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            tail -60 /tmp/pytest.log | python3 -c '
+import sys
+buf = sys.stdin.read().replace("%","%25").replace("\r","%0D").replace("\n","%0A")
+print(f"::error title=pytest tail::{buf}")
+'
+          fi
           exit "$ec"
