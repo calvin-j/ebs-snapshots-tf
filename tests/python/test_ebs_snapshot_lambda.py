@@ -2,8 +2,6 @@ import logging
 
 import boto3
 import pytest
-from moto import mock_aws
-
 import ebs_snapshot_lambda
 
 
@@ -32,7 +30,6 @@ def test_validate_volumes_mismatch(caplog):
     assert "invalid or do not exist" in caplog.text
 
 
-@mock_aws
 def test_lambda_handler_creates_tagged_snapshot(monkeypatch, snapshot_env):
     ec2 = boto3.client("ec2", region_name=REGION)
     vol_id = _create_volume(
@@ -60,7 +57,6 @@ def test_lambda_handler_creates_tagged_snapshot(monkeypatch, snapshot_env):
     assert tags["Name"].split("-")[-1] == tags["Created_at"]
 
 
-@mock_aws
 def test_lambda_handler_defaults_to_NA_when_tags_missing(monkeypatch, snapshot_env):
     ec2 = boto3.client("ec2", region_name=REGION)
     vol_id = _create_volume(ec2)

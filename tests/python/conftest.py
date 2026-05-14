@@ -1,6 +1,5 @@
-import os
-
 import pytest
+from moto import mock_aws
 
 
 @pytest.fixture(autouse=True)
@@ -9,6 +8,12 @@ def aws_credentials(monkeypatch):
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_SESSION_TOKEN", "testing")
     monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-1")
+
+
+@pytest.fixture(autouse=True)
+def aws_mock(aws_credentials):
+    with mock_aws():
+        yield
 
 
 @pytest.fixture

@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 import boto3
 import pytest
 from botocore.exceptions import ClientError
-from moto import mock_aws
 
 import ebs_cleanup_lambda
 
@@ -51,7 +50,6 @@ def test_sort_snapshots_orders_oldest_first():
     assert all(s["date"].tzinfo is None for s in ordered)
 
 
-@mock_aws
 def test_delete_snapshot_invokes_delete():
     ec2 = boto3.client("ec2", region_name=REGION)
     _, snap_ids = _make_volume_and_snapshots(ec2, count=1)
@@ -83,7 +81,6 @@ def test_delete_snapshot_swallows_client_error(monkeypatch, caplog):
     assert "Snapshot Cleanup Lambda failed" in caplog.text
 
 
-@mock_aws
 def test_handler_deletes_old_when_above_min_retain(cleanup_env, monkeypatch):
     ec2 = boto3.client("ec2", region_name=REGION)
     _, snap_ids = _make_volume_and_snapshots(ec2, count=4)
@@ -101,7 +98,6 @@ def test_handler_deletes_old_when_above_min_retain(cleanup_env, monkeypatch):
     assert remaining_ids.issubset(set(snap_ids))
 
 
-@mock_aws
 def test_handler_keeps_when_at_min_retain(cleanup_env, monkeypatch):
     ec2 = boto3.client("ec2", region_name=REGION)
     _, snap_ids = _make_volume_and_snapshots(ec2, count=2)
@@ -116,7 +112,6 @@ def test_handler_keeps_when_at_min_retain(cleanup_env, monkeypatch):
     assert {s["SnapshotId"] for s in remaining} == set(snap_ids)
 
 
-@mock_aws
 def test_handler_keeps_recent_snapshots(cleanup_env):
     ec2 = boto3.client("ec2", region_name=REGION)
     _, snap_ids = _make_volume_and_snapshots(ec2, count=4)
