@@ -12,8 +12,11 @@ def aws_credentials(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def aws_mock(aws_credentials):
-    with mock_aws():
-        yield
+    from moto.core.models import reset_model_data
+
+    with mock_aws() as mock:
+        reset_model_data()
+        yield mock
 
 
 @pytest.fixture
