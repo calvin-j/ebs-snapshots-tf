@@ -5,8 +5,13 @@
 *.tfstate
 *.tfstate.backup
 
+# Python bytecode
+__pycache__/
+*.pyc
+
 # Module directory
 .terraform
+.terraform.lock.hcl
 
 # Artefacts directory
 artefacts/
