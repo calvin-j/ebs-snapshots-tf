@@ -12,7 +12,7 @@ module "lambda_ebs_snapshots_cleanup" {
   timeout                = var.cleanup_timeout
   cwlg_retention_in_days = var.cleanup_cwlg_retention
 
-  runtime = "python2.7"
+  runtime = "python3.13"
   handler = "ebs_cleanup_lambda.lambda_handler"
 
   principal_service  = "events"

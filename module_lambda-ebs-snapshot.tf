@@ -12,7 +12,7 @@ module "lambda_ebs_snapshots" {
   timeout                = var.timeout
   cwlg_retention_in_days = var.cwlg_retention
 
-  runtime = "python2.7"
+  runtime = "python3.13"
   handler = "ebs_snapshot_lambda.lambda_handler"
 
   principal_service  = "events"
