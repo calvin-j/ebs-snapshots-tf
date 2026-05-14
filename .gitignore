@@ -18,3 +18,8 @@ artefacts/
 
 # VS Code
 .vscode
+
+# pytest / tflint caches
+.pytest_cache/
+.tflint.d/
+tests/terraform/.terraform*
