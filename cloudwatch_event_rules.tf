@@ -9,7 +9,7 @@ resource "aws_cloudwatch_event_rule" "ebs_snapshot" {
 
   description         = "Snapshot EBS volumes"
   schedule_expression = var.cw_rule_schedule_expression
-  is_enabled          = var.cw_rule_enabled
+  state               = var.cw_rule_enabled ? "ENABLED" : "DISABLED"
 }
 
 resource "aws_cloudwatch_event_rule" "ebs_snapshot_cleanup" {
@@ -23,5 +23,5 @@ resource "aws_cloudwatch_event_rule" "ebs_snapshot_cleanup" {
 
   description         = "Cleanup EBS volume snapshots"
   schedule_expression = var.cleanup_cw_rule_schedule_expression
-  is_enabled          = var.cleanup_cw_rule_enabled
+  state               = var.cleanup_cw_rule_enabled ? "ENABLED" : "DISABLED"
 }

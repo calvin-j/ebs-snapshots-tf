@@ -30,7 +30,7 @@ data "archive_file" "snapshot_lambda" {
   output_path = "${path.module}/artefacts/snapshot_lambda.zip"
 }
 
-resource "aws_s3_bucket_object" "snapshot_lambda" {
+resource "aws_s3_object" "snapshot_lambda" {
   bucket = var.snapshot_s3_bucket
   key    = var.snapshot_s3_key
   source = "${path.module}/artefacts/snapshot_lambda.zip"

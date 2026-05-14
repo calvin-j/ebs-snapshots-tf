@@ -32,7 +32,7 @@ data "archive_file" "cleanup_lambda" {
   output_path = "${path.module}/artefacts/cleanup_lambda.zip"
 }
 
-resource "aws_s3_bucket_object" "cleanup_lambda" {
+resource "aws_s3_object" "cleanup_lambda" {
   bucket = var.cleanup_s3_bucket
   key    = var.cleanup_s3_key
   source = "${path.module}/artefacts/cleanup_lambda.zip"
