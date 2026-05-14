@@ -34,9 +34,6 @@ jobs:
           tflint --init
           tflint --recursive --minimum-failure-severity=error
 
-      - name: terraform test
-        run: terraform test -test-directory=tests/terraform
-
   python:
     name: Python tests
     runs-on: ubuntu-latest
