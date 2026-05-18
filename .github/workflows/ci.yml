@@ -25,8 +25,20 @@ jobs:
       - name: terraform validate
         run: terraform validate
 
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.55.1
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: tflint
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tflint --init
+          tflint --recursive --minimum-failure-severity=error
+
   python:
-    name: Python compile
+    name: Python tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,5 +47,31 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: py_compile
-        run: python -m py_compile functions/ebs_snapshot_lambda.py functions/ebs_cleanup_lambda.py
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Show installed versions
+        run: |
+          python --version
+          pip freeze
+
+      - name: pytest
+        run: |
+          set +e
+          pytest -v -ra --tb=long 2>&1 | tee /tmp/pytest.log
+          ec=${PIPESTATUS[0]}
+          {
+            echo '### pytest output'
+            echo
+            echo '```'
+            cat /tmp/pytest.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ec" -ne 0 ]; then
+            grep -E "^FAILED |^ERROR " /tmp/pytest.log | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            encoded=$(tail -80 /tmp/pytest.log | sed -e 's/%/%25/g' -e 's/\r/%0D/g' | awk 'BEGIN{ORS="%0A"} {print}')
+            echo "::error title=pytest tail::${encoded}"
+          fi
+          exit "$ec"
